@@ -14,11 +14,19 @@ What it creates:
 import sys
 import os
 
-# Allow running from the project root: python simulator/seed.py
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
+# Allow running from project root or simulator dir: imports live in backend/
+backend_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "backend"))
+sys.path.insert(0, backend_path)
 
 from dotenv import load_dotenv
-load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
+load_dotenv(os.path.join(backend_path, ".env"))
 
 from app.core.database import SessionLocal, Base, engine
 import app.models  # ensure all models are registered  # noqa: F401
