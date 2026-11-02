@@ -1,11 +1,11 @@
-# WasteWay 🗑️🚛
+# WasteWay 
 **Agentic AI for Garbage Truck Scheduling in Modern Cities**
 
 A Multi-Agent System (MAS) prototype that dynamically schedules municipal garbage trucks based on real-time trash bin fill levels and autonomously handles field crises (e.g., truck breakdowns) using **LangGraph**, **FastAPI**, **PostgreSQL**, **Redis**, and a **React (Vite)** operations dashboard.
 
 ---
 
-## 🏗️ Architecture & Core Features
+##  Architecture & Core Features
 
 1. **Dynamic Routing Agent (LangGraph)**:
    - Continuously monitors trash bins across the city grid.
@@ -21,7 +21,7 @@ A Multi-Agent System (MAS) prototype that dynamically schedules municipal garbag
 
 ---
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 Wasteway/
@@ -79,7 +79,7 @@ Wasteway/
 
 ---
 
-## ⚡ Quick Start Guide
+##  Quick Start Guide
 
 ### Prerequisites
 - **Python 3.11+**
@@ -127,7 +127,7 @@ npm install
 
 ---
 
-## 🚀 Running the System
+##  Running the System
 
 To see the full end-to-end system in action, start these **3 processes** in separate terminal windows:
 
@@ -181,7 +181,7 @@ python simulator/simulate.py --interval 5 --breakdown-prob 0.05
 
 ---
 
-## 🏆 Project Completion Status
+##  Project Completion Status
 
 - [x] **Phase 1** – Database models (PostgreSQL/SQLAlchemy), CRUD endpoints, mock seeder & simulator
 - [x] **Phase 2** – Multi-Agent System (LangGraph StateGraphs for Dynamic Routing & Crisis Management, background runner, Redis caching)
