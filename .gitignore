@@ -1,5 +1,34 @@
-venv/
+# Environment & Secrets (Keep .env secret, track .env.example)
 .env
+*.env
+!.env.example
+
+# Python
 __pycache__/
-*.pyc
-.env.example
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+backend/venv/
+
+# Node / Frontend
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+dist-ssr/
+*.local
+.vite/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
