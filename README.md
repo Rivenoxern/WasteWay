@@ -150,7 +150,14 @@ npm run dev
 ### Terminal 3 — Mock Simulation Loop
 ```powershell
 .\backend\venv\Scripts\activate
+# Normal run:
 python simulator/simulate.py --interval 5 --breakdown-prob 0.05
+
+# Or start fresh (resets bins & trucks to initial state first):
+python simulator/simulate.py --reset
+
+# Or reset database state anytime without running the loop:
+python simulator/reset.py
 ```
 > Watch trash bins fill up randomly every 5 seconds and trigger the AI agents in real time!
 

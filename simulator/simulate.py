@@ -32,10 +32,14 @@ if sys.platform == "win32":
 # Allow running from project root or simulator dir: imports live in backend/
 backend_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "backend"))
 sys.path.insert(0, backend_path)
+simulator_dir = os.path.dirname(os.path.abspath(__file__))
+if simulator_dir not in sys.path:
+    sys.path.insert(0, simulator_dir)
 
 from dotenv import load_dotenv
 load_dotenv(os.path.join(backend_path, ".env"))
 
+from seed import reset_and_seed
 from app.core.database import SessionLocal
 from app.models.trash_bin import TrashBin
 from app.models.truck import Truck, TruckStatus
@@ -168,7 +172,14 @@ if __name__ == "__main__":
         "--breakdown-prob", type=float, default=0.05,
         help="Probability per tick that a truck breaks down (default: 0.05)"
     )
+    parser.add_argument(
+        "--reset", "-r", action="store_true",
+        help="Reset bins to starting capacities and trucks to idle before starting"
+    )
     args = parser.parse_args()
+
+    if args.reset:
+        reset_and_seed(reset=True)
 
     try:
         run_simulation(args.interval, args.breakdown_prob)

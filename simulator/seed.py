@@ -28,21 +28,32 @@ sys.path.insert(0, backend_path)
 from dotenv import load_dotenv
 load_dotenv(os.path.join(backend_path, ".env"))
 
+import argparse
 from app.core.database import SessionLocal, Base, engine
 import app.models  # ensure all models are registered  # noqa: F401
 from app.models.driver import Driver
 from app.models.truck import Truck, TruckStatus
 from app.models.trash_bin import TrashBin
+from app.models.route_task import RouteTask
+from app.models.crisis_event import CrisisEvent
 
 
-def seed():
+def reset_and_seed(reset: bool = False):
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
 
     try:
-        # ── Guard: skip if data already exists ────────────────────────────────
-        if db.query(Driver).count() > 0:
-            print("⚠️  Seed data already present. Skipping.")
+        if reset:
+            print("🔄  Resetting database...")
+            db.query(CrisisEvent).delete()
+            db.query(RouteTask).delete()
+            db.query(Truck).delete()
+            db.query(Driver).delete()
+            db.query(TrashBin).delete()
+            db.commit()
+            print("   Cleaned up old tasks, crises, trucks, and bins.")
+        elif db.query(Driver).count() > 0:
+            print("⚠️  Seed data already present. Use --reset to re-seed fresh data.")
             return
 
         # ── Drivers ───────────────────────────────────────────────────────────
@@ -107,4 +118,10 @@ def seed():
 
 
 if __name__ == "__main__":
-    seed()
+    parser = argparse.ArgumentParser(description="WasteWay Database Seeder & Reset Tool")
+    parser.add_argument(
+        "--reset", "-r", action="store_true",
+        help="Wipe old data (tasks, crises, trucks, bins) and re-seed clean state"
+    )
+    args = parser.parse_args()
+    reset_and_seed(reset=args.reset)
