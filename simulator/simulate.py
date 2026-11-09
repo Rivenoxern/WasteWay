@@ -1,17 +1,20 @@
 """
 simulator/simulate.py
 ──────────────────────
-Mock simulation loop that mimics real-world bin filling and truck breakdowns.
+Mock simulation loop that mimics real-world bin filling, truck breakdowns,
+and physical garbage collection along active truck routes.
+
+Modes:
+  • auto   – Randomly fills 2-4 bins by 5-20% each tick (default).
+  • manual – Disables automatic bin filling. Bins only fill via the admin
+             dashboard / API, giving operators manual control for demos.
+
+Collection simulation:
+  In BOTH modes, trucks assigned to active RouteTasks physically advance along
+  their waypoints, emptying bins to 0% and returning to idle upon completion.
 
 Usage:
-    python simulator/simulate.py [--interval 5] [--breakdown-prob 0.05]
-
-What it does every <interval> seconds:
-  1. Picks 2-4 random bins and increases their capacity by a random 5-20%.
-     Capacity is clamped to 100%.
-  2. With probability <breakdown-prob>, marks a random active truck
-     as "out_of_service" and prints a CRISIS alert.
-  3. Prints a live status table to the console.
+    python simulator/simulate.py [--mode auto|manual] [--interval 5] [--breakdown-prob 0.05] [--reset]
 
 Stop with Ctrl+C.
 """
@@ -44,13 +47,18 @@ from app.core.database import SessionLocal
 from app.models.trash_bin import TrashBin
 from app.models.truck import Truck, TruckStatus
 from app.models.crisis_event import CrisisEvent
-
+from app.services.simulation_service import (
+    get_simulation_mode,
+    set_simulation_mode,
+    step_collection,
+)
 
 # ── ANSI colours for console output ──────────────────────────────────────────
 GREEN  = "\033[92m"
 YELLOW = "\033[93m"
 RED    = "\033[91m"
 CYAN   = "\033[96m"
+MAGENTA = "\033[95m"
 RESET  = "\033[0m"
 
 CAPACITY_THRESHOLD = 75.0  # % above which agent should respond
@@ -65,7 +73,9 @@ def capacity_colour(pct: float) -> str:
 
 
 def run_simulation(interval: int, breakdown_prob: float):
+    initial_mode = get_simulation_mode()
     print(f"{CYAN}🚛  WasteWay Simulator started{RESET}")
+    print(f"   Fill Mode     : {initial_mode.upper()} (switchable live via dashboard)")
     print(f"   Tick interval : {interval}s")
     print(f"   Breakdown prob: {breakdown_prob:.0%}")
     print(f"   Capacity alert: ≥ {CAPACITY_THRESHOLD}%\n")
@@ -75,9 +85,17 @@ def run_simulation(interval: int, breakdown_prob: float):
         tick += 1
         db = SessionLocal()
         try:
-            _tick_bins(db, tick)
+            # Check mode dynamically (allows changing mode live from UI)
+            current_mode = get_simulation_mode()
+
+            if current_mode == "auto":
+                _tick_bins(db, tick)
+
+            # Collection simulation runs in both modes
+            _tick_collection(db)
+
             _tick_breakdowns(db, breakdown_prob)
-            _print_status(db, tick)
+            _print_status(db, tick, current_mode)
         finally:
             db.close()
 
@@ -100,6 +118,25 @@ def _tick_bins(db, tick: int):
         bin_obj.last_updated = datetime.now(timezone.utc)
 
     db.commit()
+
+
+def _tick_collection(db):
+    """Advance active garbage truck collections by one waypoint."""
+    actions = step_collection(db)
+    for act in actions:
+        truck_plate = act["plate_number"]
+        bin_id = act["bin_id"]
+        loc = act["location_name"]
+        rem = act["remaining_waypoints"]
+        print(
+            f"{GREEN}♻️  COLLECTED: Truck {truck_plate} emptied Bin #{bin_id} ({loc}) → 0.0% "
+            f"[{rem} waypoint(s) remaining]{RESET}"
+        )
+        if act["task_completed"]:
+            print(
+                f"{CYAN}🏁  ROUTE COMPLETE: Task #{act['task_id']} finished! "
+                f"Truck {truck_plate} returned to IDLE.{RESET}"
+            )
 
 
 def _tick_breakdowns(db, breakdown_prob: float):
@@ -133,7 +170,7 @@ def _tick_breakdowns(db, breakdown_prob: float):
     )
 
 
-def _print_status(db, tick: int):
+def _print_status(db, tick: int, mode: str):
     """Pretty-print current bin and truck states."""
     bins: list[TrashBin] = db.query(TrashBin).order_by(
         TrashBin.current_capacity_pct.desc()
@@ -141,7 +178,8 @@ def _print_status(db, tick: int):
     trucks: list[Truck] = db.query(Truck).all()
 
     now = datetime.now(timezone.utc).strftime("%H:%M:%S")
-    print(f"──── Tick #{tick:04d}  [{now} UTC] ────────────────────────────")
+    mode_str = f"{CYAN}[MODE: AUTO FILL]{RESET}" if mode == "auto" else f"{MAGENTA}[MODE: MANUAL FILL (Paused Auto-Fill)]{RESET}"
+    print(f"──── Tick #{tick:04d}  [{now} UTC]  {mode_str} ────")
 
     # Bins table
     print(f"{'ID':>3}  {'Location':<28}  {'Capacity':>9}  Alert")
@@ -165,6 +203,10 @@ def _print_status(db, tick: int):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="WasteWay Mock Simulator")
     parser.add_argument(
+        "--mode", choices=["auto", "manual"], default="auto",
+        help="Bin fill mode: 'auto' (random filling) or 'manual' (operator controlled via UI)"
+    )
+    parser.add_argument(
         "--interval", type=int, default=5,
         help="Seconds between simulation ticks (default: 5)"
     )
@@ -180,6 +222,8 @@ if __name__ == "__main__":
 
     if args.reset:
         reset_and_seed(reset=True)
+
+    set_simulation_mode(args.mode)
 
     try:
         run_simulation(args.interval, args.breakdown_prob)

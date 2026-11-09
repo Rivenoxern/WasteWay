@@ -19,7 +19,7 @@ from app.core.database import Base, engine
 # Import models so SQLAlchemy registers them before create_all()
 import app.models  # noqa: F401
 
-from app.routers import trucks, trash_bins, route_tasks, crisis_events, agents
+from app.routers import trucks, trash_bins, route_tasks, crisis_events, agents, simulation
 from app.agents.runner import start_agent_runner
 
 logging.basicConfig(
@@ -73,6 +73,7 @@ app.include_router(trash_bins.router,    prefix="/api/v1")
 app.include_router(route_tasks.router,   prefix="/api/v1")
 app.include_router(crisis_events.router, prefix="/api/v1")
 app.include_router(agents.router,        prefix="/api/v1")
+app.include_router(simulation.router,    prefix="/api/v1")
 
 
 # ── Health check ──────────────────────────────────────────────────────────────

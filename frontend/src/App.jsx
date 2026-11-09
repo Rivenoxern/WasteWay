@@ -8,12 +8,11 @@
  *   usePolling(api)  →  state  →  props  →  components
  *
  * Polling intervals:
- *   Bins, Trucks, Tasks, Crises : every 5 s
- *   (mimics a lightweight WebSocket-free real-time dashboard)
+ *   Bins, Trucks, Tasks, Crises, SimMode : every 5 s
  */
-import { useCallback } from 'react'
+import { useState, useCallback } from 'react'
 
-import { binsApi, trucksApi, tasksApi, crisesApi } from './api/client.js'
+import { binsApi, trucksApi, tasksApi, crisesApi, simulationApi } from './api/client.js'
 import { usePolling } from './hooks/usePolling.js'
 
 import Header        from './components/Header.jsx'
@@ -56,13 +55,48 @@ export default function App() {
     refetch: refetchCrises,
   } = usePolling(() => crisesApi.list({ limit: 30 }), POLL_MS)
 
+  const {
+    data: modeData,
+    loading: modeLoading,
+    refetch: refetchMode,
+  } = usePolling(() => simulationApi.getMode(), 10000)
+
+  const [modeBusy, setModeBusy] = useState(false)
+  const currentMode = modeData?.mode || 'auto'
+
+  // ── Mode Switcher ───────────────────────────────────────────────────
+  const handleModeChange = useCallback(async (newMode) => {
+    if (newMode === currentMode) return
+    setModeBusy(true)
+    try {
+      await simulationApi.setMode(newMode)
+      await refetchMode()
+    } catch (err) {
+      console.error('Failed to change mode:', err)
+    } finally {
+      setModeBusy(false)
+    }
+  }, [currentMode, refetchMode])
+
+  // ── Bin Capacity Updates ───────────────────────────────────────────
+  const handleUpdateBin = useCallback(async (binId, pct) => {
+    await binsApi.update(binId, { current_capacity_pct: pct })
+    await refetchBins()
+  }, [refetchBins])
+
+  const handleBulkUpdate = useCallback(async (pct) => {
+    await binsApi.bulkCapacity(pct)
+    await refetchBins()
+  }, [refetchBins])
+
   // ── Global refresh (called after agent triggers) ────────────────────
   const refreshAll = useCallback(() => {
     refetchBins()
     refetchTrucks()
     refetchTasks()
     refetchCrises()
-  }, [refetchBins, refetchTrucks, refetchTasks, refetchCrises])
+    refetchMode()
+  }, [refetchBins, refetchTrucks, refetchTasks, refetchCrises, refetchMode])
 
   // ── Derived: last sync time (from trucks as proxy) ──────────────────
   const lastUpdated = trucks?.[0]
@@ -74,7 +108,12 @@ export default function App() {
 
   return (
     <div className="app-wrapper">
-      <Header lastUpdated={lastUpdated} />
+      <Header
+        lastUpdated={lastUpdated}
+        mode={currentMode}
+        onModeChange={handleModeChange}
+        modeLoading={modeBusy || modeLoading}
+      />
 
       <main className="dashboard-body">
 
@@ -96,6 +135,9 @@ export default function App() {
           <BinTable
             bins={bins || []}
             loading={binsLoading}
+            mode={currentMode}
+            onUpdateBin={handleUpdateBin}
+            onBulkUpdate={handleBulkUpdate}
           />
         </div>
 

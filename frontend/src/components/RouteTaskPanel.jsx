@@ -3,7 +3,7 @@
  * ──────────────────────────────
  * Shows active route tasks with expandable waypoint lists.
  * Each task displays the truck, status badge, and an ordered waypoint list
- * that matches what the CityMap draws as dashed lines.
+ * with real-time collection progress (collected waypoints show green checkmarks).
  */
 import { useState } from 'react'
 
@@ -24,6 +24,8 @@ function fmtTime(iso) {
 function TaskCard({ task, trucks }) {
   const [expanded, setExpanded] = useState(task.status === 'active')
   const truck = trucks.find(t => t.id === task.truck_id)
+  const waypoints = task.waypoints || []
+  const collectedCount = waypoints.filter(w => w.collected).length
 
   return (
     <div className="task-card">
@@ -44,7 +46,12 @@ function TaskCard({ task, trucks }) {
 
       <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-          {(task.waypoints || []).length} waypoint(s)
+          {waypoints.length} waypoint(s)
+          {task.status === 'active' && (
+            <span style={{ color: 'var(--accent-green)', marginLeft: 6 }}>
+              ({collectedCount}/{waypoints.length} collected)
+            </span>
+          )}
         </span>
         <button
           onClick={() => setExpanded(e => !e)}
@@ -57,16 +64,44 @@ function TaskCard({ task, trucks }) {
 
       {expanded && (
         <div className="task-waypoints">
-          {(task.waypoints || []).map((wp, i) => (
-            <div key={i} className="waypoint-row">
-              <span className="waypoint-num">{i + 1}</span>
-              <span style={{ flex: 1 }}>{wp.location_name || `Bin #${wp.bin_id}`}</span>
-              <span style={{ color: 'var(--accent-orange)', fontWeight: 600, fontSize: 11, fontFamily: 'var(--font-mono)' }}>
-                {wp.capacity_pct != null ? `${wp.capacity_pct.toFixed(0)}%` : '—'}
-              </span>
-            </div>
-          ))}
-          {(task.waypoints || []).length === 0 && (
+          {waypoints.map((wp, i) => {
+            const isCollected = wp.collected === true
+            return (
+              <div
+                key={i}
+                className="waypoint-row"
+                style={{
+                  opacity: isCollected ? 0.6 : 1,
+                  background: isCollected ? 'rgba(63, 185, 80, 0.08)' : undefined,
+                }}
+              >
+                <span
+                  className="waypoint-num"
+                  style={{
+                    background: isCollected ? 'var(--accent-green)' : 'var(--accent-blue)',
+                    color: '#000',
+                  }}
+                >
+                  {isCollected ? '✓' : i + 1}
+                </span>
+                <span style={{
+                  flex: 1,
+                  textDecoration: isCollected ? 'line-through' : 'none',
+                }}>
+                  {wp.location_name || `Bin #${wp.bin_id}`}
+                </span>
+                <span style={{
+                  color: isCollected ? 'var(--accent-green)' : 'var(--accent-orange)',
+                  fontWeight: 600,
+                  fontSize: 11,
+                  fontFamily: 'var(--font-mono)',
+                }}>
+                  {isCollected ? 'Emptied' : (wp.capacity_pct != null ? `${wp.capacity_pct.toFixed(0)}%` : '—')}
+                </span>
+              </div>
+            )
+          })}
+          {waypoints.length === 0 && (
             <div className="empty-state" style={{ padding: '6px' }}>No waypoints.</div>
           )}
         </div>

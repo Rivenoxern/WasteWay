@@ -148,18 +148,23 @@ npm run dev
 > Open in your browser: **http://localhost:3000**
 
 ### Terminal 3 — Mock Simulation Loop
-```powershell
+`powershell
 .\backend\venv\Scripts\activate
-# Normal run:
+# Automatic fill mode (fills bins randomly & drives collection routes):
 python simulator/simulate.py --interval 5 --breakdown-prob 0.05
+
+# Manual fill mode (no random fill; operator sets bin % via dashboard):
+python simulator/simulate.py --mode manual
 
 # Or start fresh (resets bins & trucks to initial state first):
 python simulator/simulate.py --reset
 
 # Or reset database state anytime without running the loop:
 python simulator/reset.py
-```
-> Watch trash bins fill up randomly every 5 seconds and trigger the AI agents in real time!
+`
+> **Simulation Modes:**
+> - **⚡ Automatic**: The simulator progressively fills random bins and simultaneously moves trucks to empty bins along their assigned routes.
+> - **✍️ Manual**: Automatic bin filling is paused. You have total manual control from the dashboard to set each bin\'s percentage (or bulk fill to 100% / 80% / 0%) while trucks still dynamically collect and clear the bins! Switch live via the top header switcher or --mode flag.
 
 ---
 
@@ -167,24 +172,28 @@ python simulator/reset.py
 
 | Group | Method | Endpoint | Description |
 | :--- | :--- | :--- | :--- |
-| **System** | `GET` | `/health` | API health check & version info |
-| **Trucks** | `GET` | `/api/v1/trucks/` | List all trucks |
-| | `POST` | `/api/v1/trucks/` | Register a new truck |
-| | `GET/PATCH/DELETE`| `/api/v1/trucks/{id}` | Retrieve, update status/location, or delete |
-| **Trash Bins** | `GET` | `/api/v1/bins/` | List all trash bins |
-| | `GET` | `/api/v1/bins/overflowing` | Filter bins with capacity ≥ threshold (default: 75%) |
-| | `POST` | `/api/v1/bins/` | Register a new trash bin |
-| | `GET/PATCH/DELETE`| `/api/v1/bins/{id}` | Retrieve, update capacity/coords, or delete |
-| **Route Tasks**| `GET` | `/api/v1/tasks/` | List route tasks (filterable by status/truck) |
-| | `GET` | `/api/v1/tasks/{id}` | Task details and ordered waypoint sequence |
-| | `PATCH` | `/api/v1/tasks/{id}/status`| Update status (e.g. `completed` auto-resets truck to `idle`) |
-| **Crises** | `GET` | `/api/v1/crises/` | List crisis events (filterable by resolved) |
-| | `GET` | `/api/v1/crises/unresolved`| List open crises requiring agent intervention |
-| | `POST` | `/api/v1/crises/` | Manually report a truck incident |
-| | `PATCH` | `/api/v1/crises/{id}/resolve`| Mark a crisis as resolved |
-| **AI Agents** | `POST` | `/api/v1/agents/routing/run`| Manually trigger 1 full pass of Dynamic Routing Agent |
-| | `POST` | `/api/v1/agents/crisis/run/{id}` | Manually trigger Crisis Agent for a specific incident |
-| | `GET` | `/api/v1/agents/status` | Read latest agent run state cached in Redis |
+| **System** | GET | /health | API health check & version info |
+| **Simulation** | GET | /api/v1/simulation/mode | Get current fill mode (uto or manual) |
+| | POST | /api/v1/simulation/mode | Switch fill mode (uto or manual) live |
+| | POST | /api/v1/simulation/step-collection| Step active truck collection by 1 waypoint |
+| **Trucks** | GET | /api/v1/trucks/ | List all trucks |
+| | POST | /api/v1/trucks/ | Register a new truck |
+| | GET/PATCH/DELETE| /api/v1/trucks/{id} | Retrieve, update status/location, or delete |
+| **Trash Bins** | GET | /api/v1/bins/ | List all trash bins |
+| | GET | /api/v1/bins/overflowing | Filter bins with capacity >= threshold (default: 75%) |
+| | POST | /api/v1/bins/ | Register a new trash bin |
+| | POST | /api/v1/bins/bulk-capacity | Bulk update all or selected bins capacity % |
+| | GET/PATCH/DELETE| /api/v1/bins/{id} | Retrieve, update capacity/coords, or delete |
+| **Route Tasks**| GET | /api/v1/tasks/ | List route tasks (filterable by status/truck) |
+| | GET | /api/v1/tasks/{id} | Task details and ordered waypoint sequence |
+| | PATCH | /api/v1/tasks/{id}/status| Update status (e.g. completed auto-resets truck to idle) |
+| **Crises** | GET | /api/v1/crises/ | List crisis events (filterable by resolved) |
+| | GET | /api/v1/crises/unresolved| List open crises requiring agent intervention |
+| | POST | /api/v1/crises/ | Manually report a truck incident |
+| | PATCH | /api/v1/crises/{id}/resolve| Mark a crisis as resolved |
+| **AI Agents** | POST | /api/v1/agents/routing/run| Manually trigger 1 full pass of Dynamic Routing Agent |
+| | POST | /api/v1/agents/crisis/run/{id} | Manually trigger Crisis Agent for a specific incident |
+| | GET | /api/v1/agents/status | Read latest agent run state cached in Redis |
 
 ---
 
@@ -193,3 +202,5 @@ python simulator/reset.py
 - [x] **Phase 1** – Database models (PostgreSQL/SQLAlchemy), CRUD endpoints, mock seeder & simulator
 - [x] **Phase 2** – Multi-Agent System (LangGraph StateGraphs for Dynamic Routing & Crisis Management, background runner, Redis caching)
 - [x] **Phase 3** – React Admin Dashboard (Vite, pure SVG 2D city map, live polling, fleet/task/crisis panels, agent trigger controls)
+- [x] **Feature Addition** - Route Collection Simulation (trucks drive waypoints, empty bins to 0%, finish tasks)
+- [x] **Feature Addition** - Dual Simulation Modes: Automatic Bins Fill & Manual Bins Fill (with live dashboard controls)

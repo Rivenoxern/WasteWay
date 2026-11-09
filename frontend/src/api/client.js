@@ -19,9 +19,10 @@ const http = axios.create({
 
 // ── Trash Bins ────────────────────────────────────────────────────────
 export const binsApi = {
-  list:        ()     => http.get('/bins/').then(r => r.data),
-  overflowing: (pct)  => http.get('/bins/overflowing', { params: { threshold: pct } }).then(r => r.data),
-  update:      (id, data) => http.patch(`/bins/${id}`, data).then(r => r.data),
+  list:         ()               => http.get('/bins/').then(r => r.data),
+  overflowing:  (pct)            => http.get('/bins/overflowing', { params: { threshold: pct } }).then(r => r.data),
+  update:       (id, data)       => http.patch(`/bins/${id}`, data).then(r => r.data),
+  bulkCapacity: (capacity_pct, bin_ids) => http.post('/bins/bulk-capacity', { capacity_pct, bin_ids }).then(r => r.data),
 }
 
 // ── Trucks ────────────────────────────────────────────────────────────
@@ -48,4 +49,11 @@ export const agentsApi = {
   runRouting:   ()  => http.post('/agents/routing/run').then(r => r.data),
   runCrisis:    (id)=> http.post(`/agents/crisis/run/${id}`).then(r => r.data),
   status:       ()  => http.get('/agents/status').then(r => r.data),
+}
+
+// ── Simulation Controls (Auto vs Manual Bins Fill & Collection) ───────
+export const simulationApi = {
+  getMode:        ()     => http.get('/simulation/mode').then(r => r.data),
+  setMode:        (mode) => http.post('/simulation/mode', { mode }).then(r => r.data),
+  stepCollection: ()     => http.post('/simulation/step-collection').then(r => r.data),
 }

@@ -39,6 +39,11 @@ class TrashBinUpdate(BaseModel):
     current_capacity_pct: float | None = Field(default=None, ge=0.0, le=100.0)
 
 
+class BulkCapacityUpdate(BaseModel):
+    capacity_pct: float = Field(ge=0.0, le=100.0)
+    bin_ids: list[int] | None = None  # None = apply to all bins
+
+
 class TrashBinOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -87,6 +92,30 @@ def create_bin(payload: TrashBinCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(bin_obj)
     return bin_obj
+
+
+@router.post("/bulk-capacity")
+def bulk_update_capacity(payload: BulkCapacityUpdate, db: Session = Depends(get_db)):
+    """
+    Bulk update fill capacity for all bins or a specified list of bin IDs.
+    Useful for manual testing and demoing scenarios.
+    """
+    q = db.query(TrashBin)
+    if payload.bin_ids:
+        q = q.filter(TrashBin.id.in_(payload.bin_ids))
+    bins = q.all()
+
+    now = datetime.now(timezone.utc)
+    for b in bins:
+        b.current_capacity_pct = payload.capacity_pct
+        b.last_updated = now
+
+    db.commit()
+    return {
+        "success": True,
+        "updated_count": len(bins),
+        "capacity_pct": payload.capacity_pct,
+    }
 
 
 @router.get("/{bin_id}", response_model=TrashBinOut)

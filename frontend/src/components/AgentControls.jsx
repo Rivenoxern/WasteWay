@@ -1,16 +1,16 @@
 /**
  * components/AgentControls.jsx
  * ─────────────────────────────
- * Admin control panel for manually triggering the AI agents.
+ * Admin control panel for manually triggering AI agents and collection steps.
  *
  * Actions:
- *  1. "Run Routing Agent" → POST /api/v1/agents/routing/run
- *  2. "Report Breakdown"  → POST /api/v1/crises/ (creates event)
- *                           then optionally POST /api/v1/agents/crisis/run/{id}
- *  3. Shows last agent run result from Redis cache
+ *  1. "Run Routing Agent"       → POST /api/v1/agents/routing/run
+ *  2. "Simulate Collection"     → POST /api/v1/simulation/step-collection
+ *  3. "Report Breakdown"        → POST /api/v1/crises/ & Crisis Agent
+ *  4. Shows last agent run result from Redis cache
  */
-import { useState, useCallback } from 'react'
-import { agentsApi, crisesApi } from '../api/client.js'
+import { useState } from 'react'
+import { agentsApi, crisesApi, simulationApi } from '../api/client.js'
 
 export default function AgentControls({ trucks = [], onRefresh }) {
   // ── Routing Agent ──────────────────────────────────────────────────
@@ -31,6 +31,24 @@ export default function AgentControls({ trucks = [], onRefresh }) {
     }
   }
 
+  // ── Collection Simulation Step ─────────────────────────────────────
+  const [stepBusy,   setStepBusy]   = useState(false)
+  const [stepResult, setStepResult] = useState(null)
+
+  const stepCollection = async () => {
+    setStepBusy(true)
+    setStepResult(null)
+    try {
+      const result = await simulationApi.stepCollection()
+      setStepResult({ ok: true, data: result })
+      onRefresh?.()
+    } catch (err) {
+      setStepResult({ ok: false, data: err?.response?.data || err.message })
+    } finally {
+      setStepBusy(false)
+    }
+  }
+
   // ── Crisis Agent ───────────────────────────────────────────────────
   const [selectedTruck, setSelectedTruck] = useState('')
   const [issueType,     setIssueType]     = useState('breakdown')
@@ -42,12 +60,10 @@ export default function AgentControls({ trucks = [], onRefresh }) {
     setCrisisBusy(true)
     setCrisisResult(null)
     try {
-      // Step 1: report the crisis
       const event = await crisesApi.report({
         truck_id: Number(selectedTruck),
         issue_type: issueType,
       })
-      // Step 2: immediately dispatch the Crisis Agent for this event
       const result = await agentsApi.runCrisis(event.id)
       setCrisisResult({ ok: true, data: result })
       onRefresh?.()
@@ -74,25 +90,21 @@ export default function AgentControls({ trucks = [], onRefresh }) {
     }
   }
 
-  const activeTrucks = trucks.filter(t =>
-    t.status === 'idle' || t.status === 'en_route'
-  )
-
   return (
     <div className="card">
       <div className="card-header">
-        <span className="card-title">🤖 Agent Controls</span>
+        <span className="card-title">🤖 Agent & Simulation Controls</span>
         <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-          Manual triggers & status
+          Manual triggers & testing
         </span>
       </div>
 
       <div className="card-body agent-controls">
 
-        {/* ── Routing Agent ──────────────────────────────────── */}
+        {/* ── Routing Agent & Collection ─────────────────────── */}
         <div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 600 }}>
-            Dynamic Routing Agent
+            Dynamic Routing & Collection
           </div>
           <div className="agent-btn-group">
             <button
@@ -102,6 +114,14 @@ export default function AgentControls({ trucks = [], onRefresh }) {
             >
               {routingBusy ? '⏳ Running…' : '▶ Run Routing Agent'}
             </button>
+            <button
+              className="btn btn-ghost"
+              onClick={stepCollection}
+              disabled={stepBusy}
+              title="Advance truck collection by 1 waypoint immediately"
+            >
+              {stepBusy ? '⏳ Stepping…' : '♻️ Step Collection (1-Tick)'}
+            </button>
           </div>
           {routingResult && (
             <div className={`agent-result ${routingResult.ok ? 'success' : 'error'}`}
@@ -110,6 +130,16 @@ export default function AgentControls({ trucks = [], onRefresh }) {
               {routingResult.ok
                 ? `✅ ${routingResult.data.message || 'Done.'}\nTask IDs: [${(routingResult.data.route_task_ids || []).join(', ')}]`
                 : `❌ ${JSON.stringify(routingResult.data, null, 2)}`
+              }
+            </div>
+          )}
+          {stepResult && (
+            <div className={`agent-result ${stepResult.ok ? 'success' : 'error'}`}
+              style={{ marginTop: 8 }}
+            >
+              {stepResult.ok
+                ? `✅ Advanced collection: ${stepResult.data.actions_count} truck action(s).\n${(stepResult.data.actions || []).map(a => `• Truck ${a.plate_number} emptied Bin #${a.bin_id} (${a.location_name}) [${a.remaining_waypoints} left]`).join('\n') || 'No active routes to collect.'}`
+                : `❌ ${JSON.stringify(stepResult.data, null, 2)}`
               }
             </div>
           )}

@@ -1,11 +1,12 @@
 /**
  * components/Header.jsx
  * ──────────────────────
- * Sticky top navigation bar showing brand, live clock, and connection status.
+ * Sticky top navigation bar showing brand, live clock, connection status,
+ * and the Auto / Manual Bins Fill Mode switcher.
  */
 import { useState, useEffect } from 'react'
 
-export default function Header({ lastUpdated }) {
+export default function Header({ lastUpdated, mode = 'auto', onModeChange, modeLoading }) {
   const [time, setTime] = useState(new Date())
 
   useEffect(() => {
@@ -23,6 +24,30 @@ export default function Header({ lastUpdated }) {
         <div>
           <div className="header-title">WasteWay</div>
           <div className="header-subtitle">Agentic AI Garbage Truck Scheduling</div>
+        </div>
+      </div>
+
+      <div className="header-center">
+        <div className="mode-pill-container">
+          <span className="mode-label">Bins Fill Mode:</span>
+          <div className="mode-toggle-group">
+            <button
+              className={`mode-btn ${mode === 'auto' ? 'mode-active-auto' : ''}`}
+              onClick={() => onModeChange?.('auto')}
+              disabled={modeLoading}
+              title="Simulator automatically fills random bins every tick"
+            >
+              ⚡ Automatic
+            </button>
+            <button
+              className={`mode-btn ${mode === 'manual' ? 'mode-active-manual' : ''}`}
+              onClick={() => onModeChange?.('manual')}
+              disabled={modeLoading}
+              title="Manual mode: Auto-fill paused, set bin capacity via dashboard"
+            >
+              ✍️ Manual
+            </button>
+          </div>
         </div>
       </div>
 
