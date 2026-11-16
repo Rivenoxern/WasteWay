@@ -128,6 +128,11 @@ def start_agent_runner() -> None:
     Called once from main.py lifespan startup.
     Daemon threads automatically die when the main process exits.
     """
+    import os
+    if os.environ.get("VERCEL"):
+        logger.info("⚡ [Runner] Vercel serverless environment detected – background daemon threads skipped.")
+        return
+
     redis_client = _get_redis()
 
     routing_thread = threading.Thread(

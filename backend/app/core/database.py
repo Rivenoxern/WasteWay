@@ -11,8 +11,12 @@ from app.core.config import settings
 
 
 # ── Engine ────────────────────────────────────────────────────────────────────
+db_url = settings.DATABASE_URL
+if db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql://", 1)
+
 engine = create_engine(
-    settings.DATABASE_URL,
+    db_url,
     pool_pre_ping=True,   # detect stale connections before using them
     echo=(settings.APP_ENV == "development"),
 )
