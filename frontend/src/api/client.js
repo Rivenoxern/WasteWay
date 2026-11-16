@@ -56,4 +56,5 @@ export const simulationApi = {
   getMode:        ()     => http.get('/simulation/mode').then(r => r.data),
   setMode:        (mode) => http.post('/simulation/mode', { mode }).then(r => r.data),
   stepCollection: ()     => http.post('/simulation/step-collection').then(r => r.data),
+  reset:          ()     => http.post('/simulation/reset').then(r => r.data),
 }

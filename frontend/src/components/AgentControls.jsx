@@ -90,6 +90,27 @@ export default function AgentControls({ trucks = [], onRefresh }) {
     }
   }
 
+  // ── System Reset ───────────────────────────────────────────────────
+  const [resetBusy, setResetBusy] = useState(false)
+  const [resetMsg, setResetMsg] = useState(null)
+
+  const resetSystem = async () => {
+    if (!window.confirm("Reset all tasks, return all trucks to idle, and restore clean initial state?")) {
+      return
+    }
+    setResetBusy(true)
+    setResetMsg(null)
+    try {
+      const res = await simulationApi.reset()
+      setResetMsg(`✅ ${res.message || "Reset complete."}`)
+      onRefresh?.()
+    } catch (err) {
+      setResetMsg(`❌ Reset failed: ${err.message}`)
+    } finally {
+      setResetBusy(false)
+    }
+  }
+
   return (
     <div className="card">
       <div className="card-header">
@@ -209,6 +230,27 @@ export default function AgentControls({ trucks = [], onRefresh }) {
           {statusResult && (
             <div className="agent-result" style={{ marginTop: 8 }}>
               {JSON.stringify(statusResult, null, 2)}
+            </div>
+          )}
+        </div>
+
+        <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 12 }}>
+          {/* ── System Reset ─────────────────────────────────── */}
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 600 }}>
+            System State Reset
+          </div>
+          <button
+            className="btn btn-ghost"
+            style={{ color: 'var(--accent-red)', borderColor: 'rgba(248,81,73,.35)' }}
+            onClick={resetSystem}
+            disabled={resetBusy}
+            title="Reset trucks to idle, clear all tasks, and reset bins to default"
+          >
+            {resetBusy ? '⏳ Resetting…' : '🔄 Reset System to Clean State'}
+          </button>
+          {resetMsg && (
+            <div className={`agent-result ${resetMsg.startsWith('✅') ? 'success' : 'error'}`} style={{ marginTop: 8 }}>
+              {resetMsg}
             </div>
           )}
         </div>
